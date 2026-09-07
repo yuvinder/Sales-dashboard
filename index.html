@@ -73,7 +73,11 @@ table th:nth-child(4), table td:nth-child(4){width:20%}
 .product-qty-panel table th:first-child,
 .product-qty-panel table td:first-child{width:70%}
 .product-qty-panel table th:nth-child(2),
-.product-qty-panel table td:nth-child(2){width:30%}
+.product-qty-panel table td:nth-child(2){width:18%}
+.product-qty-panel table th:nth-child(3),
+.product-qty-panel table td:nth-child(3){width:18%}
+.product-qty-panel table th:nth-child(4),
+.product-qty-panel table td:nth-child(4){width:24%}
 
 /* ================= THEMED TABLE STYLING ================= */
 
@@ -242,10 +246,18 @@ table th:nth-child(4), table td:nth-child(4){width:20%}
         <div class="section-head">Product-wise Quantity</div>
         <div class="scroll">
           <table>
-            <thead><tr><th>Product</th><th>Quantity (Kg/Ltrs)</th></tr></thead>
+            <thead><tr><th>Product</th><th>Quantity (Kg/Ltrs)</th><th>Points/Kg-Ltr</th><th>Total Points</th></tr></thead>
             <tbody id="productQtyBody"></tbody>
           </table>
         </div>
+      </div>
+
+      <div class="panel theme-red reward-party-panel">
+        <div class="section-head">Party-wise Wise Reward Points</div>
+        <div class="scroll"><table>
+          <thead><tr><th>Payer Name</th><th>Quantity (Kg/Ltrs)</th><th>Total Reward Points</th></tr></thead>
+          <tbody id="partyPointsBody"></tbody>
+        </table></div>
       </div>
     </main>
   </div>
@@ -253,6 +265,15 @@ table th:nth-child(4), table td:nth-child(4){width:20%}
 
 <script>
 const RATES={"ASTOR":[10872,13590],"ATMOS":[3200,4463],"BOSNAT":[3321,3907],"CYANAT":[3902,4590],"DEXARON":[1698,1998],"DI-FORCE":[1779,2093],"GLACPOT":[546,682],"GLANZ":[3427,4032],"HATRIK":[1189,1321],"NATCORE":[950,1117],"NATCRUSH":[3000,3600],"NATDUO":[113,145],"NATERRA":[76,85],"NATGEN":[2020,3672],"NATGEN PRO":[9257,10890],"NATJEWEL":[597,702],"NATLAM":[375,390],"NATLIGO":[2081,2601],"NATLIKA":[876,1095],"NATNEXT":[2115,2643],"NATPEARL":[1353,1591],"NATVOL":[2732,3215],"NATWEEZ":[830,1036],"NATZOATE":[998,1124],"OMNINAT":[1265,1488],"PAMUK":[4950,6188],"PRIDONAT":[2500,2950],"SCRIPTOR":[16575,19500],"SLAYDEN":[1150,1692],"SPIROVANTA":[2513,2956],"TOPRASURE":[20585,22700],"VECTRA":[1688,1986],"VINASAK":[1327,1561],"XYMEN":[8325,12167]};
+const REWARD_POINTS={"ASTOR":9.5,"ATMOS":5.5,"CYANAT":2.5,"GLANZ":2,"NATGEN PRO":3.5,"NATGEN":6,"NATLIGO":1,"SLAYDEN":1.5,"DEXARON":0.5,"PAMUK":3,"DI-FORCE":1,"VECTRA":1};
+const REWARD_POINT_KEYS=Object.keys(REWARD_POINTS).sort((a,b)=>b.length-a.length);
+function rewardPointsForProduct(product){
+  const p=norm(product);
+  for(const k of REWARD_POINT_KEYS){
+    if(p===k || p.startsWith(k+" ") || p.includes(" "+k+" ")) return REWARD_POINTS[k];
+  }
+  return 0;
+}
 const FC={"KHALSA TRADERS":"Akash Kumar","SAINI BROTHERS":"Akash Kumar","DEEP TRADERS":"Ankit Kukkar","JANTA KHETI CENTRE":"Ankit Kukkar","LEKH RAJ & GRAND SONS":"Ankit Kukkar","LEKH RAJ KUKKAR AND SONS":"Ankit Kukkar","JAI SHREE AGRO CHEMICALS":"Ankush Relhan","RAJ AGRO CHEMICALS":"Ankush Relhan","JASSAR KHETI SEWA CENTRE":"Avneet Singh","AULAKH KHETI SEWA CENTRE":"Balwinder Singh","JAGDAMBEY PESTICIDES":"Balwinder Singh","MUKESH KUMAR BANSAL & CO.":"Balwinder Singh","ZIMIDAR KHETI SEWA CENTER":"Balwinder Singh","BABBU TRADING COMPANY":"Ganga Gopal Singh","SUSHIL TRADING CO":"Ganga Gopal Singh","BATRA PESTCIDES & FERTILIZER":"Harpreet Singh","GROVER PESTICIDE":"Harpreet Singh","MODERN KHETI SEWA CENTRE":"Harpreet Singh","KISSAN AGRO CENTRE":"Inderjit Singh","MITTAL BROTHERS":"Inderjit Singh","CHIRAG PESTICIDES & FERTILIZERS":"Jai Parkash","SATGURU PESTICIDES AND FERTILIZERS":"Jai Parkash","SURINDER SINGH AND CO":"Jai Parkash","DEEP BROTHERS PESTISIDES":"Jaspreet Singh","MALWA BEEJ STORE":"Jaspreet Singh","NAVBHARAT AGRO AGENCIES":"Jaspreet Singh","SARAO PESTICIDES":"Jasvir Singh","BUDH RAM & SONS":"Mohan Singh","NARANJAN DASS SANJEEV KUMAR":"Mohan Singh","NEW KISSAN PESTICIDES":"Mohan Singh","PANKAJ PESTICIDES":"Mohan Singh","YAMEEN SEED AND PESTICIDES STORE":"Muhammad Farooq","KAKKAR KHAD STORE":"Mukesh Bawa","NATIONAL AGRO CENTRE":"Mukesh Bawa","RAM RACHHPAL DHAWAN AND SONS":"Mukesh Bawa","DAMODAR DASS JAI CHAND AGGARWAL":"Nishan Singh","G.H. KHETI STORE":"Nishan Singh","GILL KHETI STORE":"Nishan Singh","MAHAJAN TRADERS":"Nishan Singh","D N B PUNJAB PESTICIDES":"Paramjeet Singh","NEW KISSAN SEWA CENTRE":"Paramjeet Singh","ZIMIDARA PESTICIDES":"Paramjeet Singh","ANAND PESTICIDES":"Pawan Kumar","GOYAL SPRAY COMPANY":"Pawan Kumar","ZIMIDARA AGRO TRADERS":"RAMIT KAMBOJ","NATIONAL SEED DEPOT":"Sanjeev Kumar","NEW KAMBOJ KHETI STORE":"Sohan Lal","NEW SHERE PUNJAB PESTICIDES":"Surjeet Singh","RAKESH KUMAR AND CO.":"Surjeet Singh","RAM SARUP NAROTAM DASS":"Surjeet Singh"};
 let data=[],auto=true,timer=null,countTimer=null,nextAt=0;
 const $=id=>document.getElementById(id), norm=x=>String(x??"").trim().replace(/\s+/g," ").toUpperCase(), num=x=>parseFloat(String(x??"").replace(/,/g,"").replace(/[₹$]/g,""))||0;
@@ -432,15 +453,19 @@ function render(){
   let tq=0,nrv=0,ndp=0,P={},S={},F={},T={},PR={};
   f.forEach(r=>{
     let rate=RATES[norm(r.strength)]||[0,0],
-        n=r.qty*rate[0], d=r.qty*rate[1];
+        n=r.qty*rate[0], d=r.qty*rate[1],
+        ptsPerUnit=rewardPointsForProduct(r.product),
+        pts=r.qty*ptsPerUnit;
     tq+=r.qty; nrv+=n; ndp+=d;
-    P[r.payer]??={q:0,n:0,d:0};
-    P[r.payer].q+=r.qty; P[r.payer].n+=n; P[r.payer].d+=d;
+    P[r.payer]??={q:0,n:0,d:0,pts:0};
+    P[r.payer].q+=r.qty; P[r.payer].n+=n; P[r.payer].d+=d; P[r.payer].pts+=pts;
     S[r.strength]??={q:0,n:0,d:0};
     S[r.strength].q+=r.qty; S[r.strength].n+=n; S[r.strength].d+=d;
     F[r.fc]??={q:0,n:0,d:0,p:new Set()};
     F[r.fc].q+=r.qty; F[r.fc].n+=n; F[r.fc].d+=d; F[r.fc].p.add(r.payer);
-    PR[r.product]??=0; PR[r.product]+=r.qty;
+    PR[r.product]??={q:0,pts:0,rate:ptsPerUnit};
+    PR[r.product].q+=r.qty; PR[r.product].pts+=pts;
+    if(ptsPerUnit>PR[r.product].rate) PR[r.product].rate=ptsPerUnit;
     T[r.territory]??={n:0,d:0};
     T[r.territory].n+=n; T[r.territory].d+=d;
   });
@@ -454,6 +479,11 @@ function render(){
     `<tr><td title="${esc(x||'(Blank)')}">${esc(x||"(Blank)")}</td><td>${qf(v.q)}</td><td class="money-nrv">${lakhs(v.n)}</td><td class="money-ndp">${lakhs(v.d)}</td></tr>`
   ).join("")||'<tr><td colspan=4>No data</td></tr>';
 
+  let ppa=Object.entries(P).sort((a,b)=>b[1].pts-a[1].pts);
+  $("partyPointsBody").innerHTML=ppa.map(([x,v])=>
+    `<tr><td title="${esc(x||'(Blank)')}">${esc(x||"(Blank)")}</td><td>${qf(v.q)}</td><td>${v.pts.toLocaleString("en-IN",{minimumFractionDigits:1,maximumFractionDigits:1})}</td></tr>`
+  ).join("")||'<tr><td colspan=3>No data</td></tr>';
+
   let fa=Object.entries(F).sort((a,b)=>b[1].d-a[1].d);
   $("fcBody").innerHTML=fa.map(([x,v])=>
     `<tr><td title="${esc(x)}">${esc(x)}</td><td>${v.p.size}</td><td class="money-nrv">${lakhs(v.n)}</td><td class="money-ndp">${lakhs(v.d)}</td></tr>`
@@ -464,10 +494,10 @@ function render(){
     `<tr><td title="${esc(x||'(Blank)')}">${esc(x||"(Blank)")}</td><td>${qf(v.q)}</td><td class="money-nrv">${lakhs(v.n)}</td><td class="money-ndp">${lakhs(v.d)}</td></tr>`
   ).join("")||'<tr><td colspan=4>No data</td></tr>';
 
-  let pqa=Object.entries(PR).sort((a,b)=>b[1]-a[1]);
-  $("productQtyBody").innerHTML=pqa.map(([x,q])=>
-    `<tr><td title="${esc(x||'(Blank)')}">${esc(x||"(Blank)")}</td><td>${qf(q)}</td></tr>`
-  ).join("")||'<tr><td colspan=2>No product data</td></tr>';
+  let pqa=Object.entries(PR).sort((a,b)=>b[1].pts-a[1].pts);
+  $("productQtyBody").innerHTML=pqa.map(([x,v])=>
+    `<tr><td title="${esc(x||'(Blank)')}">${esc(x||"(Blank)")}</td><td>${qf(v.q)}</td><td>${v.rate.toLocaleString("en-IN",{minimumFractionDigits:1,maximumFractionDigits:1})}</td><td>${v.pts.toLocaleString("en-IN",{minimumFractionDigits:1,maximumFractionDigits:1})}</td></tr>`
+  ).join("")||'<tr><td colspan=4>No product data</td></tr>';
 
   let ta=Object.entries(T).sort((a,b)=>b[1].d-a[1].d),
       pieTotal=ta.reduce((s,[x,v])=>s+v.d,0);
