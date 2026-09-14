@@ -28,6 +28,18 @@ body{margin:0;background:var(--bg);font-family:Inter,Arial,sans-serif;color:var(
 .filter{min-width:0}.filter label{display:block;color:var(--navy);font-size:12px;font-weight:800;margin-bottom:4px}
 select{width:100%;height:36px;border:1px solid #DC2626;border-radius:6px;background:#fff;color:#111;padding:0 8px;font-weight:700;outline:none;font-size:13px}
 select:focus{border-color:#B91C1C;box-shadow:0 0 0 3px rgba(220,38,38,0.15)}
+.multi-filter{position:relative}
+.multi-filter-btn{width:100%;height:36px;border:1px solid #DC2626;border-radius:6px;background:#fff;color:#111;padding:0 30px 0 8px;font-weight:700;outline:none;font-size:13px;text-align:left;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;position:relative}
+.multi-filter-btn:after{content:"▾";position:absolute;right:9px;top:50%;transform:translateY(-50%);color:#991B1B}
+.multi-filter-btn.open{border-color:#991B1B;box-shadow:0 0 0 3px rgba(220,38,38,.15)}
+.multi-filter-menu{display:none;position:absolute;z-index:9999;left:0;right:0;top:calc(100% + 4px);background:#fff;border:1px solid #FCA5A5;border-radius:7px;box-shadow:0 12px 28px rgba(127,29,29,.16);max-height:280px;overflow:auto;padding:5px}
+.multi-filter-menu.open{display:block}
+.multi-option{display:flex;align-items:center;gap:8px;padding:7px 6px;font-size:12px;font-weight:700;color:#111;cursor:pointer;border-radius:5px}
+.multi-option:hover{background:#FEF2F2}
+.multi-option input{width:16px;height:16px;accent-color:#B91C1C;cursor:pointer}
+.multi-empty{padding:10px 6px;color:#777;font-size:12px}
+@media(max-width:700px){.multi-filter-menu{position:fixed;left:10px;right:10px;top:auto;bottom:10px;max-height:55vh}}
+
 .reset{width:100%;height:36px;border:1px solid #B91C1C;border-radius:6px;background:#fff;color:#7F1D1D;font-weight:800;cursor:pointer;margin-top:6px;font-size:13px}
 .reset:hover{background:#B91C1C;color:#fff}
 
@@ -190,13 +202,13 @@ table th:nth-child(4), table td:nth-child(4){width:20%}
     <aside class="sidebar">
       <div class="side-title">Dashboard Filters</div>
       <div class="filters">
-        <div class="filter"><label>Month</label><select id="month"><option value="">All</option></select></div>
-        <div class="filter"><label>Invoice Date</label><select id="invoiceDate"><option value="">All</option></select></div>
-        <div class="filter"><label>FC Name</label><select id="fc"><option value="">All</option></select></div>
-        <div class="filter"><label>Territory</label><select id="territory"><option value="">All</option></select></div>
-        <div class="filter"><label>Strength</label><select id="strength"><option value="">All</option></select></div>
-        <div class="filter"><label>Payer Name</label><select id="payer"><option value="">All</option></select></div>
-        <div class="filter"><label>Product + Packing</label><select id="productPacking"><option value="">All</option></select></div>
+        <div class="filter multi-filter"><label>Month</label><button type="button" class="multi-filter-btn" id="monthBtn" onclick="toggleMultiFilter('month')">All</button><div class="multi-filter-menu" id="monthMenu"></div></div>
+<div class="filter multi-filter"><label>Invoice Date</label><button type="button" class="multi-filter-btn" id="invoiceDateBtn" onclick="toggleMultiFilter('invoiceDate')">All</button><div class="multi-filter-menu" id="invoiceDateMenu"></div></div>
+<div class="filter multi-filter"><label>FC Name</label><button type="button" class="multi-filter-btn" id="fcBtn" onclick="toggleMultiFilter('fc')">All</button><div class="multi-filter-menu" id="fcMenu"></div></div>
+<div class="filter multi-filter"><label>Territory</label><button type="button" class="multi-filter-btn" id="territoryBtn" onclick="toggleMultiFilter('territory')">All</button><div class="multi-filter-menu" id="territoryMenu"></div></div>
+<div class="filter multi-filter"><label>Strength</label><button type="button" class="multi-filter-btn" id="strengthBtn" onclick="toggleMultiFilter('strength')">All</button><div class="multi-filter-menu" id="strengthMenu"></div></div>
+<div class="filter multi-filter"><label>Payer Name</label><button type="button" class="multi-filter-btn" id="payerBtn" onclick="toggleMultiFilter('payer')">All</button><div class="multi-filter-menu" id="payerMenu"></div></div>
+<div class="filter multi-filter"><label>Product + Packing</label><button type="button" class="multi-filter-btn" id="productPackingBtn" onclick="toggleMultiFilter('productPacking')">All</button><div class="multi-filter-menu" id="productPackingMenu"></div></div>
         <button class="reset" onclick="resetFilters()">Reset Filters</button>
       </div>
     </aside>
@@ -387,17 +399,78 @@ function clean(o){
   };
 }
 
-function opts(id,a){
-  let e=$(id),old=e.value;
-  e.innerHTML='<option value="">All</option>';
-  [...new Set(a.filter(Boolean))].sort((x,y)=>x.localeCompare(y,undefined,{numeric:true})).forEach(v=>{
-    let o=document.createElement("option");
-    o.value=v;
-    o.textContent=v;
-    e.appendChild(o);
-  });
-  if([...e.options].some(o=>o.value===old)) e.value=old;
+const multiSelections={
+  month:new Set(),invoiceDate:new Set(),fc:new Set(),territory:new Set(),
+  strength:new Set(),payer:new Set(),productPacking:new Set()
+};
+
+function filterField(row,type){
+  return String(row[type]??"").trim();
 }
+function updateMultiButton(type){
+  const b=$(type+"Btn");
+  if(b)b.textContent=multiSelections[type].size?`${multiSelections[type].size} selected`:"All";
+}
+function renderMultiFilter(type,values){
+  const menu=$(type+"Menu");
+  if(!menu)return;
+  const selected=multiSelections[type];
+  const vals=[...new Set(values.filter(v=>String(v??"").trim()).map(v=>String(v).trim()))]
+    .sort((a,b)=>a.localeCompare(b,undefined,{numeric:true,sensitivity:"base"}));
+  menu.innerHTML="";
+
+  const all=document.createElement("label");
+  all.className="multi-option";
+  all.innerHTML='<input type="checkbox" data-all><span>All</span>';
+  const allCb=all.querySelector("input");
+  allCb.checked=selected.size===0;
+  allCb.onchange=()=>{
+    selected.clear();
+    menu.querySelectorAll('input:not([data-all])').forEach(c=>c.checked=false);
+    updateMultiButton(type);
+    render();
+  };
+  menu.appendChild(all);
+
+  vals.forEach(v=>{
+    const row=document.createElement("label");
+    row.className="multi-option";
+    const cb=document.createElement("input");
+    cb.type="checkbox";
+    cb.checked=selected.has(v);
+    const sp=document.createElement("span");
+    sp.textContent=v;
+    cb.onchange=()=>{
+      if(cb.checked)selected.add(v);else selected.delete(v);
+      allCb.checked=selected.size===0;
+      updateMultiButton(type);
+      render();
+    };
+    row.append(cb,sp);
+    menu.appendChild(row);
+  });
+  updateMultiButton(type);
+}
+function opts(id,a){
+  renderMultiFilter(id,a);
+}
+function toggleMultiFilter(type){
+  const menu=$(type+"Menu"),btn=$(type+"Btn");
+  if(!menu)return;
+  const open=!menu.classList.contains("open");
+  document.querySelectorAll(".multi-filter-menu.open").forEach(x=>x.classList.remove("open"));
+  document.querySelectorAll(".multi-filter-btn.open").forEach(x=>x.classList.remove("open"));
+  if(open){
+    menu.classList.add("open");
+    btn.classList.add("open");
+  }
+}
+document.addEventListener("click",e=>{
+  if(!e.target.closest(".multi-filter")){
+    document.querySelectorAll(".multi-filter-menu.open").forEach(x=>x.classList.remove("open"));
+    document.querySelectorAll(".multi-filter-btn.open").forEach(x=>x.classList.remove("open"));
+  }
+});
 
 function populate(){
   opts("territory",data.map(x=>x.territory));
@@ -414,21 +487,10 @@ function populate(){
 
   const dateMap=new Map();
   data.forEach(r=>{
-    if(r.invoiceDate && r.invoiceDateObj && !dateMap.has(r.invoiceDate)){
-      dateMap.set(r.invoiceDate, r.invoiceDateObj.getTime());
-    }
+    if(r.invoiceDate) dateMap.set(r.invoiceDate, r.invoiceDateObj ? r.invoiceDateObj.getTime() : 0);
   });
   const sortedDates=[...dateMap.entries()].sort((a,b)=>a[1]-b[1]).map(x=>x[0]);
-  
-  let dateElem=$("invoiceDate"), oldDateVal=dateElem.value;
-  dateElem.innerHTML='<option value="">All</option>';
-  sortedDates.forEach(v=>{
-    let o=document.createElement("option");
-    o.value=v;
-    o.textContent=v;
-    dateElem.appendChild(o);
-  });
-  if([...dateElem.options].some(o=>o.value===oldDateVal)) dateElem.value=oldDateVal;
+  opts("invoiceDate",sortedDates);
   
   opts("payer",data.map(x=>x.payer));
   opts("fc",data.map(x=>x.fc));
@@ -441,13 +503,13 @@ function esc(x){return String(x).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",
 
 function render(){
   let f=data.filter(r=>
-    (!$("territory").value||r.territory===$("territory").value)&&
-    (!$("strength").value||r.strength===$("strength").value)&&
-    (!$("month").value||r.month===$("month").value)&&
-    (!$("invoiceDate").value||r.invoiceDate===$("invoiceDate").value)&&
-    (!$("payer").value||r.payer===$("payer").value)&&
-    (!$("fc").value||r.fc===$("fc").value)&&
-    (!$("productPacking").value||r.product===$("productPacking").value)
+    (!multiSelections.territory.size||multiSelections.territory.has(r.territory))&&
+    (!multiSelections.strength.size||multiSelections.strength.has(r.strength))&&
+    (!multiSelections.month.size||multiSelections.month.has(r.month))&&
+    (!multiSelections.invoiceDate.size||multiSelections.invoiceDate.has(r.invoiceDate))&&
+    (!multiSelections.payer.size||multiSelections.payer.has(r.payer))&&
+    (!multiSelections.fc.size||multiSelections.fc.has(r.fc))&&
+    (!multiSelections.productPacking.size||multiSelections.productPacking.has(r.product))
   );
 
   let tq=0,nrv=0,ndp=0,P={},S={},F={},T={},PR={};
@@ -550,8 +612,11 @@ function render(){
   }
 }
 
-["territory","strength","month","invoiceDate","payer","fc","productPacking"].forEach(id=>$(id).addEventListener("change",render));
-function resetFilters(){["territory","strength","month","invoiceDate","payer","fc","productPacking"].forEach(id=>$(id).value="");render()}
+function resetFilters(){
+  Object.keys(multiSelections).forEach(k=>multiSelections[k].clear());
+  populate();
+  render();
+}
 
 function loadData(){
   $("status").className="status";
